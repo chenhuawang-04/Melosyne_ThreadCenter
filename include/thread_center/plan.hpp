@@ -115,7 +115,9 @@ public:
       Backend::emplace(
         subflow_, desc_, Detail::makeTaskInvoker(desc_, runtime_state_, std::forward<Fn>(fn_))),
       allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -133,7 +135,9 @@ public:
                                   Detail::makeConditionInvoker(
                                     condition_desc, runtime_state_, std::forward<Fn>(fn_))),
                  allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, condition_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, condition_desc, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -144,7 +148,9 @@ public:
       GateHandle{Backend::emplace(
                    subflow_, gate_desc, Detail::makeTaskInvoker(gate_desc, runtime_state_, [] {})),
                  allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    }
     return gate_handle;
   }
 
@@ -179,7 +185,9 @@ public:
                                                desc_, runtime_state_, std::forward<Fn>(fn_))),
                         allocateNodeId()};
     }();
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -257,7 +265,9 @@ public:
       Backend::emplace(
         native_, desc_, Detail::makeTaskInvoker(desc_, runtime_state_, std::forward<Fn>(fn_))),
       allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -275,7 +285,9 @@ public:
                                   Detail::makeConditionInvoker(
                                     condition_desc, runtime_state_, std::forward<Fn>(fn_))),
                  allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, condition_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, condition_desc, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -316,7 +328,9 @@ public:
           Detail::emitTaskEvent(runtime_state->trace_hooks, dynamic_desc, TaskEventType::FINISHED);
         }),
       allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, dynamic_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, dynamic_desc, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
@@ -424,7 +438,9 @@ public:
                                 },
                                 pipeline_state.get()});
       backend_keepalives_.push_back(pipeline_state);
-      Detail::emitTaskEvent(runtime_state_->trace_hooks, pipeline_desc, TaskEventType::SUBMITTED);
+      if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+        Detail::emitTaskEvent(runtime_state_->trace_hooks, pipeline_desc, TaskEventType::SUBMITTED);
+      }
       return task_handle;
     }
     else {
@@ -483,7 +499,9 @@ public:
       GateHandle{Backend::emplace(
                    native_, gate_desc, Detail::makeTaskInvoker(gate_desc, runtime_state_, [] {})),
                  allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    }
     return gate_handle;
   }
 
@@ -494,7 +512,9 @@ public:
       GateHandle{Backend::emplace(
                    native_, gate_desc, Detail::makeTaskInvoker(gate_desc, runtime_state_, [] {})),
                  allocateNodeId()};
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, gate_desc, TaskEventType::SUBMITTED);
+    }
     return gate_handle;
   }
 
@@ -529,7 +549,9 @@ public:
                                                desc_, runtime_state_, std::forward<Fn>(fn_))),
                         allocateNodeId()};
     }();
-    Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    if (runtime_state_->trace_hooks.on_task_event != nullptr) {
+      Detail::emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::SUBMITTED);
+    }
     return task_handle;
   }
 
