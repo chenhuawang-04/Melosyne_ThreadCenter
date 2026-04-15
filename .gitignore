@@ -1,0 +1,16 @@
+# Build outputs
+build/
+
+# IDE/editor
+.vscode/
+.idea/
+*.vcxproj*
+*.sln
+
+# Temporary/log
+*.log
+*.tmp
+
+# Benchmark outputs
+bench_report*.csv
+bench_report*.json
