@@ -798,7 +798,7 @@ inline void TaskflowBackend::clear(GraphType& graph_)
 
 inline void TaskflowBackend::decorate(NodeType task_, const TaskDesc& desc_)
 {
-  if (!desc_.name.empty()) {
+  if (!desc_.name.empty() && hasFlag(desc_.flags, TaskFlags::BACKEND_NAME)) {
     task_.name(std::string(desc_.name));
   }
 }
