@@ -742,6 +742,61 @@ template <class Index>
   return stride;
 }
 
+template <class Index>
+[[nodiscard]] constexpr auto
+parallelForBatchSpan(Index batch_first_, Index last_, Index step_, std::size_t batch_size_) noexcept
+  -> std::size_t
+{
+  if (batch_size_ == 0) {
+    return 0;
+  }
+
+  if constexpr (std::unsigned_integral<Index>) {
+    if (step_ == 0 || batch_first_ >= last_) {
+      return 0;
+    }
+
+    const auto remaining = static_cast<std::size_t>((last_ - batch_first_ + (step_ - 1)) / step_);
+    return std::min(batch_size_, remaining);
+  }
+  else if constexpr (std::signed_integral<Index>) {
+    if (step_ == 0) {
+      return 0;
+    }
+
+    using UnsignedIndex = std::make_unsigned_t<Index>;
+
+    if (step_ > 0) {
+      if (batch_first_ >= last_) {
+        return 0;
+      }
+
+      const auto remaining = static_cast<UnsignedIndex>(last_ - batch_first_);
+      const auto step_value = static_cast<UnsignedIndex>(step_);
+      const auto count = static_cast<std::size_t>((remaining + (step_value - 1)) / step_value);
+      return std::min(batch_size_, count);
+    }
+
+    if (batch_first_ <= last_) {
+      return 0;
+    }
+
+    const auto remaining = static_cast<UnsignedIndex>(batch_first_ - last_);
+    const auto step_value = static_cast<UnsignedIndex>(-step_);
+    const auto count = static_cast<std::size_t>((remaining + (step_value - 1)) / step_value);
+    return std::min(batch_size_, count);
+  }
+  else {
+    auto count = std::size_t{0};
+    auto value = batch_first_;
+    while (count < batch_size_ && isParallelForIndexInRange(value, last_, step_)) {
+      value = advanceParallelForIndex(value, step_);
+      ++count;
+    }
+    return count;
+  }
+}
+
 [[nodiscard]] inline auto hasTaskTraceHook(const PlanRuntimeState& runtime_state_) noexcept -> bool
 {
   return runtime_state_.trace_hooks.on_task_event != nullptr;
@@ -781,11 +836,13 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
       const auto observe_cancellation = canObserveCancellation(desc_, cancel_state_ptr);
 
       if (!trace_enabled && !observe_cancellation) {
+        const auto batch_count = parallelForBatchSpan(batch_first_, last_, step_, batch_size_);
+        if (batch_count == 0) {
+          return;
+        }
+
         auto index = batch_first_;
-        for (std::size_t batch_index = 0; batch_index < batch_size_; ++batch_index) {
-          if (!isParallelForIndexInRange(index, last_, step_)) {
-            break;
-          }
+        for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
           fn(index, cancel_token);
           index = advanceParallelForIndex(index, step_);
         }
@@ -798,11 +855,14 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
       }
 
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::STARTED);
+      const auto batch_count = parallelForBatchSpan(batch_first_, last_, step_, batch_size_);
+      if (batch_count == 0) {
+        emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::FINISHED);
+        return;
+      }
+
       auto index = batch_first_;
-      for (std::size_t batch_index = 0; batch_index < batch_size_; ++batch_index) {
-        if (!isParallelForIndexInRange(index, last_, step_)) {
-          break;
-        }
+      for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
         if (observe_cancellation && isCancellationRequested(cancel_state_ptr)) {
           break;
         }
@@ -824,11 +884,13 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
       const auto observe_cancellation = canObserveCancellation(desc_, cancel_state_ptr);
 
       if (!trace_enabled && !observe_cancellation) {
+        const auto batch_count = parallelForBatchSpan(batch_first_, last_, step_, batch_size_);
+        if (batch_count == 0) {
+          return;
+        }
+
         auto index = batch_first_;
-        for (std::size_t batch_index = 0; batch_index < batch_size_; ++batch_index) {
-          if (!isParallelForIndexInRange(index, last_, step_)) {
-            break;
-          }
+        for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
           fn(index);
           index = advanceParallelForIndex(index, step_);
         }
@@ -841,11 +903,14 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
       }
 
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::STARTED);
+      const auto batch_count = parallelForBatchSpan(batch_first_, last_, step_, batch_size_);
+      if (batch_count == 0) {
+        emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::FINISHED);
+        return;
+      }
+
       auto index = batch_first_;
-      for (std::size_t batch_index = 0; batch_index < batch_size_; ++batch_index) {
-        if (!isParallelForIndexInRange(index, last_, step_)) {
-          break;
-        }
+      for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
         if (observe_cancellation && isCancellationRequested(cancel_state_ptr)) {
           break;
         }
