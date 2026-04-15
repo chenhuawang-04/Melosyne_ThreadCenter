@@ -730,11 +730,26 @@ template <class Index>
 [[nodiscard]] constexpr auto makeParallelForBatchStride(Index step_,
                                                         std::size_t batch_size_) noexcept -> Index
 {
+  if constexpr (std::integral<Index>) {
+    return static_cast<Index>(step_ * static_cast<Index>(batch_size_));
+  }
+
   auto stride = step_;
   for (std::size_t batch_index = 1; batch_index < batch_size_; ++batch_index) {
     stride = advanceParallelForIndex(stride, step_);
   }
   return stride;
+}
+
+[[nodiscard]] inline auto hasTraceHooks(const TraceHooks& trace_hooks_) noexcept -> bool
+{
+  return trace_hooks_.on_task_event != nullptr;
+}
+
+[[nodiscard]] inline auto canObserveCancellation(const TaskDesc& desc_,
+                                                 const CancelToken& cancel_token_) noexcept -> bool
+{
+  return desc_.cancel_behavior != CancelBehavior::NON_CANCELLABLE && cancel_token_.stopPossible();
 }
 
 template <class Index, class Fn>
@@ -749,8 +764,22 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
   return [desc_, runtime_state_, last_, step_, batch_size_, fn = std::forward<Fn>(fn_)](
            Index batch_first_) mutable {
     auto cancel_token = CancelToken{runtime_state_->cancel_state};
+    const auto trace_enabled = hasTraceHooks(runtime_state_->trace_hooks);
+    const auto observe_cancellation = canObserveCancellation(desc_, cancel_token);
 
-    if (shouldCancel(desc_, cancel_token)) {
+    if (!trace_enabled && !observe_cancellation) {
+      auto index = batch_first_;
+      for (std::size_t batch_index = 0; batch_index < batch_size_; ++batch_index) {
+        if (!isParallelForIndexInRange(index, last_, step_)) {
+          break;
+        }
+        invokeIndexedTaskBody(fn, index, cancel_token);
+        index = advanceParallelForIndex(index, step_);
+      }
+      return;
+    }
+
+    if (observe_cancellation && shouldCancel(desc_, cancel_token)) {
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::CANCELED);
       return;
     }
@@ -761,7 +790,7 @@ makeBatchedIndexedTaskInvoker(const TaskDesc& desc_,
       if (!isParallelForIndexInRange(index, last_, step_)) {
         break;
       }
-      if (shouldCancel(desc_, cancel_token)) {
+      if (observe_cancellation && shouldCancel(desc_, cancel_token)) {
         break;
       }
       invokeIndexedTaskBody(fn, index, cancel_token);
@@ -778,8 +807,15 @@ template <class Fn>
 {
   return [desc_, runtime_state_, fn = std::forward<Fn>(fn_)]() mutable {
     auto cancel_token = CancelToken{runtime_state_->cancel_state};
+    const auto trace_enabled = hasTraceHooks(runtime_state_->trace_hooks);
+    const auto observe_cancellation = canObserveCancellation(desc_, cancel_token);
 
-    if (shouldCancel(desc_, cancel_token)) {
+    if (!trace_enabled && !observe_cancellation) {
+      invokeTaskBody(fn, cancel_token);
+      return;
+    }
+
+    if (observe_cancellation && shouldCancel(desc_, cancel_token)) {
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::CANCELED);
       return;
     }
@@ -797,8 +833,15 @@ template <class Index, class Fn>
 {
   return [desc_, runtime_state_, fn = std::forward<Fn>(fn_)](Index index_) mutable {
     auto cancel_token = CancelToken{runtime_state_->cancel_state};
+    const auto trace_enabled = hasTraceHooks(runtime_state_->trace_hooks);
+    const auto observe_cancellation = canObserveCancellation(desc_, cancel_token);
 
-    if (shouldCancel(desc_, cancel_token)) {
+    if (!trace_enabled && !observe_cancellation) {
+      invokeIndexedTaskBody(fn, index_, cancel_token);
+      return;
+    }
+
+    if (observe_cancellation && shouldCancel(desc_, cancel_token)) {
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::CANCELED);
       return;
     }
@@ -816,8 +859,19 @@ template <class Fn>
 {
   return [desc_, runtime_state_, fn = std::forward<Fn>(fn_)]() mutable {
     auto cancel_token = CancelToken{runtime_state_->cancel_state};
+    const auto trace_enabled = hasTraceHooks(runtime_state_->trace_hooks);
+    const auto observe_cancellation = canObserveCancellation(desc_, cancel_token);
 
-    if (shouldCancel(desc_, cancel_token)) {
+    if (!trace_enabled && !observe_cancellation) {
+      if constexpr (std::invocable<Fn&, const CancelToken&>) {
+        return static_cast<int>(fn(cancel_token));
+      }
+      else {
+        return static_cast<int>(fn());
+      }
+    }
+
+    if (observe_cancellation && shouldCancel(desc_, cancel_token)) {
       emitTaskEvent(runtime_state_->trace_hooks, desc_, TaskEventType::CANCELED);
       return 0;
     }
