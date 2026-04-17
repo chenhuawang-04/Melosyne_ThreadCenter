@@ -62,7 +62,10 @@ cmake -S . -B build -G Ninja \
   -DTHREAD_CENTER_BUILD_TESTS_HEADER=ON \
   -DTHREAD_CENTER_BUILD_TESTS_MODULE=ON \
   -DTHREAD_CENTER_BUILD_BENCH_HEADER=ON \
-  -DTHREAD_CENTER_BUILD_BENCH_MODULE=ON
+  -DTHREAD_CENTER_BUILD_BENCH_MODULE=ON \
+  -DTHREAD_CENTER_PERF_FORCE_O3=ON \
+  -DTHREAD_CENTER_PERF_ENABLE_NATIVE=ON \
+  -DTHREAD_CENTER_PERF_ENABLE_LTO=ON
 cmake --build build -j
 ```
 
@@ -94,7 +97,8 @@ ctest --test-dir build --output-on-failure
 powershell -ExecutionPolicy Bypass -File scripts/compare_header_vs_module.ps1 `
   -BuildDir build `
   -Warmup 20 -Measure 80 -Repeats 3 `
-  -Scenario ChainBuildRun -Scenario ParallelForBuildRun
+  -OuterRounds 6 -OrderMode ABBA `
+  -Scenario ChainBuildRun,ParallelForBuildRun,DynamicBuildRun
 ```
 
 输出目录：`<BuildDir>/compare_report_<timestamp>/`，包含：
@@ -103,6 +107,24 @@ powershell -ExecutionPolicy Bypass -File scripts/compare_header_vs_module.ps1 `
 - `bench_module.json/csv/log`
 - `compare_summary.json/csv`
 - `tests_header.log` / `tests_module.log`（除非 `-SkipTests`）
+
+关键参数（用于严格对比）：
+
+- `-OuterRounds`：外层轮次（建议 >= 4）
+- `-OrderMode ABBA`：header/module 交错顺序，降低时序偏置
+- `-CoolDownMs`：轮间冷却时间，减少温度/频率漂移影响
+- `-Scenario`：支持逗号分隔多个过滤关键词
+
+推荐对比协议（严谨版）：
+
+1. 使用同一构建目录、同一编译参数（建议开启 `THREAD_CENTER_PERF_ENABLE_LTO`）
+2. `-OrderMode ABBA`，`-OuterRounds >= 6`
+3. 每轮固定 `Warmup/Measure/Repeats`，不要中途改参数
+4. 关注 `compare_summary` 中：
+   - `tc_delta_percent`
+   - `tc_significance`
+   - `taskflow_baseline_drift_percent`（>5% 建议重跑）
+   - `stability`（CV 标签）
 
 ---
 
