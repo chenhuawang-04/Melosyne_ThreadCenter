@@ -20,7 +20,11 @@
 #include <taskflow/algorithm/pipeline.hpp>
 #include <taskflow/taskflow.hpp>
 
+#if defined(THREAD_CENTER_USE_MODULES)
+import Center.Thread;
+#else
 #include "thread_center/thread_center.hpp"
+#endif
 
 namespace
 {

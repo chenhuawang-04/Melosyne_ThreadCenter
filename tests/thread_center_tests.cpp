@@ -8,7 +8,11 @@
 #include <string_view>
 #include <vector>
 
+#if defined(THREAD_CENTER_USE_MODULES)
+import Center.Thread;
+#else
 #include "thread_center/thread_center.hpp"
+#endif
 
 namespace
 {

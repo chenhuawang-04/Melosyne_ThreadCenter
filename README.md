@@ -42,7 +42,9 @@ ThreadCenter/
 │  └─ detail/taskflow_backend.hpp # Taskflow 后端适配层
 ├─ tests/thread_center_tests.cpp
 ├─ benchmarks/thread_center_vs_taskflow_bench.cpp
+├─ scripts/compare_header_vs_module.ps1
 ├─ examples/basic_usage.cpp
+├─ modules/Center.Thread*.cppm   # cppm 模块实现
 ├─ taskflow-4.0.0/                # vendored taskflow
 └─ CMakeLists.txt
 ```
@@ -51,23 +53,32 @@ ThreadCenter/
 
 ## 4. 构建与运行
 
-### 4.1 配置与构建
+### 4.1 配置与构建（Header + Module 双通道）
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release -j
+cmake -S . -B build -G Ninja \
+  -DTHREAD_CENTER_BUILD_TESTS=ON \
+  -DTHREAD_CENTER_BUILD_BENCHMARKS=ON \
+  -DTHREAD_CENTER_BUILD_TESTS_HEADER=ON \
+  -DTHREAD_CENTER_BUILD_TESTS_MODULE=ON \
+  -DTHREAD_CENTER_BUILD_BENCH_HEADER=ON \
+  -DTHREAD_CENTER_BUILD_BENCH_MODULE=ON
+cmake --build build -j
 ```
 
-### 4.2 运行测试
+### 4.2 运行测试（两套 API）
 
 ```bash
-ctest --test-dir build -C Release --output-on-failure
+ctest --test-dir build --output-on-failure
+# thread_center_tests          (header API)
+# thread_center_tests_module   (cppm API)
 ```
 
-### 4.3 运行基准
+### 4.3 运行基准（两套 API）
 
 ```bash
-./build/thread_center_vs_taskflow_bench.exe --workers 10 --warmup 20 --measure 80 --repeats 3 --json build/bench_report.json
+./build/thread_center_vs_taskflow_bench.exe --workers 10 --warmup 20 --measure 80 --repeats 3 --json build/bench_header.json
+./build/thread_center_vs_taskflow_bench_module.exe --workers 10 --warmup 20 --measure 80 --repeats 3 --json build/bench_module.json
 ```
 
 可选参数：
@@ -76,6 +87,22 @@ ctest --test-dir build -C Release --output-on-failure
 - `--csv <path>`：导出 CSV
 - `--json <path>`：导出 JSON
 - `--list-scenarios`：列出全部场景
+
+### 4.4 一键对比驱动脚本（Header vs Module）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/compare_header_vs_module.ps1 `
+  -BuildDir build `
+  -Warmup 20 -Measure 80 -Repeats 3 `
+  -Scenario ChainBuildRun -Scenario ParallelForBuildRun
+```
+
+输出目录：`<BuildDir>/compare_report_<timestamp>/`，包含：
+
+- `bench_header.json/csv/log`
+- `bench_module.json/csv/log`
+- `compare_summary.json/csv`
+- `tests_header.log` / `tests_module.log`（除非 `-SkipTests`）
 
 ---
 
