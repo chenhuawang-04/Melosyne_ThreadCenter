@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef CENTER_THREAD_MODULE_BUILD
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -17,6 +18,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
+#endif
 
 namespace ThreadCenter
 {

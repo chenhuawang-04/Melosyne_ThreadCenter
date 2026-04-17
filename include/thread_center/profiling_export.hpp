@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef CENTER_THREAD_MODULE_BUILD
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include <string_view>
+#endif
 
 #include "thread_center/frame_plan.hpp"
 
