@@ -53,7 +53,7 @@ ThreadCenter/
 
 ## 4. 构建与运行
 
-### 4.1 配置与构建（Header + Module 双通道）
+### 4.1 顶层工程配置与构建（Header + Module 双通道）
 
 ```bash
 cmake -S . -B build -G Ninja \
@@ -68,6 +68,8 @@ cmake -S . -B build -G Ninja \
   -DTHREAD_CENTER_PERF_ENABLE_LTO=ON
 cmake --build build -j
 ```
+
+> 说明：当 ThreadCenter 作为子项目（`add_subdirectory`）时，`examples/tests/benchmarks` 默认自动关闭，不会污染宿主工程构建目标。
 
 ### 4.2 运行测试（两套 API）
 
@@ -125,6 +127,44 @@ powershell -ExecutionPolicy Bypass -File scripts/compare_header_vs_module.ps1 `
    - `tc_significance`
    - `taskflow_baseline_drift_percent`（>5% 建议重跑）
    - `stability`（CV 标签）
+
+### 4.5 作为子项目接入（推荐）
+
+宿主工程 `CMakeLists.txt` 示例：
+
+```cmake
+add_subdirectory(external/ThreadCenter)
+
+add_executable(game main.cpp)
+target_link_libraries(game PRIVATE ThreadCenter::ThreadCenter)         # 头文件 API
+# 或
+target_link_libraries(game PRIVATE ThreadCenter::ThreadCenterModules)  # cppm API
+```
+
+常用子项目选项（可在 `add_subdirectory` 前设置）：
+
+```cmake
+set(THREAD_CENTER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_HEADER_API ON CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_MODULES ON CACHE BOOL "" FORCE)
+```
+
+### 4.6 安装与 find_package（可选）
+
+```bash
+cmake -S . -B build/install -DTHREAD_CENTER_ENABLE_INSTALL=ON
+cmake --build build/install -j
+cmake --install build/install --prefix <install-prefix>
+```
+
+随后可在其他工程中：
+
+```cmake
+find_package(ThreadCenter CONFIG REQUIRED)
+target_link_libraries(game PRIVATE ThreadCenter::ThreadCenter)
+```
 
 ---
 
